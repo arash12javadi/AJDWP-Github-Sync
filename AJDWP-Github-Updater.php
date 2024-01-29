@@ -3,7 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) exit; 
 
 /**
- * Plugin Name:       AJDWP-Github_Updater
+ * Plugin Name:       AJDWP-Github-Updater
  * Plugin URI:        https://github.com/arash12javadi/
  * Description:       In the admin menu, locate the section titled 'GitHub Settings'. Effortlessly input your username, repository, and default branch name (usually 'main'). Verify updates by navigating to Dashboard -> Updates.
  * Version:           1
