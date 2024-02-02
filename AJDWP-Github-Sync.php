@@ -5,7 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 /**
  * Plugin Name:       AJDWP-Github-Sync
  * Plugin URI:        https://github.com/arash12javadi/
- * Description:       
+ * Description:       This plugin facilitates the installation and continuous updating of GitHub themes and plugins using the specified GitHub username, repository, and branch. Additionally, it seamlessly installs and maintains the latest versions of all AJDWP plugins and themes with just a single click. Enjoy the convenience! :)
  * Version:           1
  * Requires at least: 5.2
  * Requires PHP:      7.2
