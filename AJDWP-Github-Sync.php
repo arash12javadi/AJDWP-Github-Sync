@@ -184,51 +184,11 @@ function AJDWP_select_plugins_callback() {
     }
 }
 
-// add_shortcode( 'github_plugin_updater', 'github_plugin_updater_func' );
-
-// function github_plugin_updater_func() {
-//     $plugin_path = WP_PLUGIN_DIR . '/AJDWP-floating-login-form-Plugin/AJDWP-floating-login-form.php'; // Replace with the actual plugin path
-
-//     if (!file_exists($plugin_path)) {
-//         // The plugin is installed
-//         echo 'Plugin is installed!';
-//     } else {
-//         // The plugin is not installed
-//         echo 'Plugin is not installed.';
-//     }
-    
-//     echo '<br>';
-//     echo WP_PLUGIN_DIR . 'AJDWP-floating-login-form-Plugin/AJDWP-floating-login-form.php';
-//     // echo '<br><pre><br>';
-//     // print_r($current);
-//     // echo '<br></pre><br>';
-// }
-
 
 //--------------------------- Global Variables - GitHub inserted details ---------------------------//
 $AJDWP_github_user       = get_option('github_username');    // Get the GitHub username from the settings
 $AJDWP_github_repo       = get_option('github_repository');  // Get the GitHub repository from the settings
 $AJDWP_github_branch     = get_option('github_Branch');      // Get the GitHub Branch from the settings
-
-//--------------------------- install plugin ---------------------------//
-//  include_once('plugin_installer.php');
-//  install_github_plugin($AJDWP_github_user, $AJDWP_github_repo, $AJDWP_github_branch);
-
-//--------------------------- update plugin ---------------------------//
-// require_once( 'plugin_updater.php' );
-// if ( is_admin() ) {
-//     $plugin_file = $AJDWP_github_repo.'-Plugin/'.$AJDWP_github_repo.'.php';
-//     $plugin_slug = plugin_basename($plugin_file);
-//     new AJDWP_GitHubPluginUpdater( $plugin_slug, $AJDWP_github_user, $AJDWP_github_repo );
-// }
-
-
-//--------------------------- install theme ---------------------------//
-// include_once('theme_installer.php');
-// install_github_theme('theme', $AJDWP_github_user, $AJDWP_github_repo, $AJDWP_github_branch);
-
-//--------------------------- update theme ---------------------------//
-// include_once('theme_updater.php');
 
 
 //--------------------------- Install theme or plugin with inserted details of Github ---------------------------//
