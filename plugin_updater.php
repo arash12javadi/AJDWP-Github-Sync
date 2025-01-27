@@ -1,10 +1,11 @@
 <?php
 
-if (!defined('ABSPATH')) exit;
+if (!defined('ABSPATH')) {
+    exit; // Exit if accessed directly
+}
 
 class AJDWP_GitHubPluginUpdater
 {
-
     private $slug;
     private $pluginData;
     private $username;
@@ -15,7 +16,7 @@ class AJDWP_GitHubPluginUpdater
 
     public function __construct($pluginFile, $gitHubUsername, $gitHubProjectName, $accessToken = '')
     {
-        add_filter("pre_set_site_transient_update_plugins", [$this, "setTransitent"]);
+        add_filter("pre_set_site_transient_update_plugins", [$this, "setTransient"]);
         add_filter("plugins_api", [$this, "setPluginInfo"], 10, 3);
         add_filter("upgrader_post_install", [$this, "postInstall"], 10, 3);
 
@@ -27,8 +28,13 @@ class AJDWP_GitHubPluginUpdater
 
     private function initPluginData()
     {
-        $this->slug = plugin_basename($this->pluginFile);
-        $this->pluginData = get_plugin_data($this->pluginFile);
+        if (file_exists($this->pluginFile)) {
+            $this->slug = plugin_basename($this->pluginFile);
+            $this->pluginData = get_plugin_data($this->pluginFile);
+        } else {
+            $this->slug = null;
+            $this->pluginData = null;
+        }
     }
 
     private function getRepoReleaseInfo()
@@ -43,27 +49,42 @@ class AJDWP_GitHubPluginUpdater
             $url = add_query_arg(["access_token" => $this->accessToken], $url);
         }
 
-        $this->githubAPIResult = wp_remote_retrieve_body(wp_remote_get($url));
+        $response = wp_remote_get($url);
 
-        if (!empty($this->githubAPIResult)) {
-            $this->githubAPIResult = @json_decode($this->githubAPIResult);
+        if (is_wp_error($response)) {
+            $this->githubAPIResult = null;
+            return;
         }
 
+        $body = wp_remote_retrieve_body($response);
+        $this->githubAPIResult = json_decode($body);
+
         if (is_array($this->githubAPIResult)) {
-            $this->githubAPIResult = $this->githubAPIResult[0];
+            $this->githubAPIResult = $this->githubAPIResult[0]; // Get the latest release
         }
     }
 
-    public function setTransitent($transient)
+    public function setTransient($transient)
     {
         if (empty($transient->checked)) {
             return $transient;
         }
 
         $this->initPluginData();
+
+        // If plugin data is not initialized, skip
+        if (empty($this->slug) || empty($this->pluginData)) {
+            return $transient;
+        }
+
         $this->getRepoReleaseInfo();
 
-        $doUpdate = version_compare($this->githubAPIResult->tag_name, $transient->checked[$this->slug]);
+        // Ensure release info is available
+        if (empty($this->githubAPIResult) || empty($this->githubAPIResult->tag_name)) {
+            return $transient;
+        }
+
+        $doUpdate = version_compare($this->githubAPIResult->tag_name, $transient->checked[$this->slug] ?? '');
 
         if ($doUpdate == 1) {
             $package = $this->githubAPIResult->zipball_url;
@@ -75,8 +96,9 @@ class AJDWP_GitHubPluginUpdater
             $obj = new stdClass();
             $obj->slug = $this->slug;
             $obj->new_version = $this->githubAPIResult->tag_name;
-            $obj->url = $this->pluginData["PluginURI"];
+            $obj->url = $this->pluginData["PluginURI"] ?? '';
             $obj->package = $package;
+
             $transient->response[$this->slug] = $obj;
         }
 
@@ -86,45 +108,42 @@ class AJDWP_GitHubPluginUpdater
     public function setPluginInfo($false, $action, $response)
     {
         $this->initPluginData();
-        $this->getRepoReleaseInfo();
 
-        if (empty($response->slug) || $response->slug != $this->slug) {
+        if (empty($this->slug) || empty($response->slug) || $response->slug != $this->slug) {
             return false;
         }
 
-        $response->last_updated = $this->githubAPIResult->published_at;
-        $response->slug = $this->slug;
-        $response->plugin_name  = $this->pluginData["Name"];
-        $response->version = $this->githubAPIResult->tag_name;
-        $response->author = $this->pluginData["AuthorName"];
-        $response->homepage = $this->pluginData["PluginURI"];
+        $this->getRepoReleaseInfo();
 
-        $downloadLink = $this->githubAPIResult->zipball_url;
+        if (empty($this->githubAPIResult)) {
+            return false;
+        }
+
+        $response->last_updated = $this->githubAPIResult->published_at ?? '';
+        $response->slug = $this->slug;
+        $response->plugin_name = $this->pluginData["Name"] ?? '';
+        $response->version = $this->githubAPIResult->tag_name ?? '';
+        $response->author = $this->pluginData["AuthorName"] ?? '';
+        $response->homepage = $this->pluginData["PluginURI"] ?? '';
+
+        $downloadLink = $this->githubAPIResult->zipball_url ?? '';
 
         if (!empty($this->accessToken)) {
             $downloadLink = add_query_arg(["access_token" => $this->accessToken], $downloadLink);
         }
+
         $response->download_link = $downloadLink;
 
-        // require_once(plugin_dir_path(__FILE__) . "Parsedown.php");
-
-
         $response->sections = [
-            'description' => $this->pluginData["Description"],
-            'changelog' => class_exists("Parsedown") ? Parsedown::instance()->parse($this->githubAPIResult->body) : $this->githubAPIResult->body
+            'description' => $this->pluginData["Description"] ?? '',
+            'changelog' => class_exists("Parsedown") ? Parsedown::instance()->parse($this->githubAPIResult->body ?? '') : $this->githubAPIResult->body ?? ''
         ];
 
-        $matches = null;
-        preg_match("/requires:\s([\d\.]+)/i", $this->githubAPIResult->body, $matches);
-        if (!empty($matches) && is_array($matches) && count($matches) > 1) {
-            $response->requires = $matches[1];
-        }
+        preg_match("/requires:\s([\d\.]+)/i", $this->githubAPIResult->body ?? '', $requires);
+        preg_match("/tested:\s([\d\.]+)/i", $this->githubAPIResult->body ?? '', $tested);
 
-        $matches = null;
-        preg_match("/tested:\s([\d\.]+)/i", $this->githubAPIResult->body, $matches);
-        if (!empty($matches) && is_array($matches) && count($matches) > 1) {
-            $response->tested = $matches[1];
-        }
+        $response->requires = $requires[1] ?? '';
+        $response->tested = $tested[1] ?? '';
 
         return $response;
     }
@@ -137,16 +156,19 @@ class AJDWP_GitHubPluginUpdater
 
         global $wp_filesystem;
         $pluginFolder = WP_PLUGIN_DIR . DIRECTORY_SEPARATOR . dirname($this->slug);
-        $wp_filesystem->move($result['destination'], $pluginFolder);
-        $result['destination'] = $pluginFolder;
 
-        if ($wasActivated) {
-            $activate = activate_plugin($this->slug);
+        if (isset($result['destination']) && $wp_filesystem->move($result['destination'], $pluginFolder)) {
+            $result['destination'] = $pluginFolder;
+
+            if ($wasActivated) {
+                activate_plugin($this->slug);
+            }
         }
 
         return $result;
     }
 }
+
 
 //--------------------------- parsedown class ---------------------------//
 
