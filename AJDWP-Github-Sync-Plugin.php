@@ -1,12 +1,14 @@
 <?php
 
-if (! defined('ABSPATH')) exit;
+if (! defined('ABSPATH')) {
+    exit;
+}
 
 /**
  * Plugin Name:       AJDWP GitHub Sync Plugin
  * Plugin URI:        https://github.com/arash12javadi/
  * Description:       Easily install and keep GitHub-hosted themes and plugins up-to-date by specifying the GitHub username, repository, and branch. Also, install and update all AJDWP plugins and themes with a single click.
- * Version:           250302
+ * Version:           1.0
  * Requires at least: 5.2
  * Requires PHP:      7.2
  * Author:            Arash Javadi
@@ -15,15 +17,11 @@ if (! defined('ABSPATH')) exit;
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  */
 
+/* -------------------------------------------------------------
+   1) ADMIN MENU: GITHUB PLUGIN/THEME SETTINGS + AJDWP PLUGIN SETTINGS
+------------------------------------------------------------- */
 
-
-//__________________________________________________________________________//
-//			Theme Update From Github Repo
-//__________________________________________________________________________//
-
-// Add a menu item to the admin menu
 add_action('admin_menu', 'github_plugin_menu');
-
 function github_plugin_menu()
 {
     add_menu_page(
@@ -31,52 +29,69 @@ function github_plugin_menu()
         'AJDWP GitHub Sync',
         'manage_options',
         'github-plugin-settings',
-        'github_plugin_page',
+        'github_plugin_page',    // callback
         'dashicons-update-alt'
     );
 }
 
-// Callback function for the settings page
+/**
+ * The "settings page" callback function.
+ */
 function github_plugin_page()
 {
 ?>
     <div class="wrap">
 
-        <!-- Form for GitHub Settings -->
+        <!-- 1) Form for GitHub Settings (Single Plugin or Theme from user input) -->
         <form method="post" action="options.php">
             <?php
             settings_fields('github_plugin_settings');
             do_settings_sections('github-plugin-settings');
+            // The nonce for the GitHub form
             wp_nonce_field('github_plugin_nonce_action', 'github_plugin_nonce');
-            submit_button('Install / Update');
+
+            // The submit button named "install_github_plugins"
+            submit_button(
+                'Install / Update',
+                'primary',
+                'install_github_plugins'
+            );
             ?>
         </form>
 
-        <!-- Form for AJDWP Plugin Settings -->
+        <!-- 2) Form for AJDWP Plugin Settings (Multiple selection) -->
         <form method="post" action="options.php">
             <?php
             settings_fields('AJDWP_plugin_settings');
             do_settings_sections('AJDWP-plugin-settings');
+            // The nonce for the AJDWP selection form
             wp_nonce_field('AJDWP_plugin_nonce_action', 'AJDWP_plugin_nonce');
-            submit_button('Save');
+
+            // The submit button named "install_selected_plugins"
+            submit_button(
+                'Save (Install Selected)',
+                'primary',
+                'install_selected_plugins'
+            );
             ?>
         </form>
+
     </div>
 <?php
 }
 
-// Register settings
+/* -------------------------------------------------------------
+   2) REGISTER / RENDER GITHUB PLUGIN SETTINGS
+------------------------------------------------------------- */
 add_action('admin_init', 'github_plugin_settings');
-
 function github_plugin_settings()
 {
-    // Register and sanitize inputs
+    // Register & sanitize
     register_setting('github_plugin_settings', 'github_username', 'sanitize_text_field');
     register_setting('github_plugin_settings', 'github_repository', 'sanitize_text_field');
     register_setting('github_plugin_settings', 'github_Branch', 'sanitize_text_field');
     register_setting('github_plugin_settings', 'theme_or_plugin', 'sanitize_text_field');
 
-    // GitHub Settings Section
     add_settings_section(
         'github_plugin_section',
         'GitHub Installer and Updater',
@@ -84,7 +99,6 @@ function github_plugin_settings()
         'github-plugin-settings'
     );
 
-    // GitHub Username Field
     add_settings_field(
         'github_username',
         'GitHub Username',
@@ -92,8 +106,6 @@ function github_plugin_settings()
         'github-plugin-settings',
         'github_plugin_section'
     );
-
-    // GitHub Repository Field
     add_settings_field(
         'github_repository',
         'GitHub Repository',
@@ -101,8 +113,6 @@ function github_plugin_settings()
         'github-plugin-settings',
         'github_plugin_section'
     );
-
-    // GitHub Branch Field
     add_settings_field(
         'github_Branch',
         'GitHub Branch',
@@ -110,8 +120,6 @@ function github_plugin_settings()
         'github-plugin-settings',
         'github_plugin_section'
     );
-
-    // Theme or Plugin Selection Field
     add_settings_field(
         'theme_or_plugin',
         'Theme or Plugin',
@@ -120,40 +128,29 @@ function github_plugin_settings()
         'github_plugin_section'
     );
 }
-
-// GitHub Section Callback
 function github_plugin_section_callback()
 {
     echo esc_html('Enter your GitHub details for the themes or plugins you would like to install or update below:');
 }
-
-// GitHub Username Callback
 function github_username_callback()
 {
     $github_username = get_option('github_username', '');
     echo '<input type="text" name="github_username" value="' . esc_attr($github_username) . '" />';
 }
-
-// GitHub Repository Callback
 function github_repository_callback()
 {
     $github_repository = get_option('github_repository', '');
     echo '<input type="text" name="github_repository" value="' . esc_attr($github_repository) . '" />';
 }
-
-// GitHub Branch Callback
 function github_Branch_callback()
 {
-    $github_Branch = get_option('github_Branch', 'main'); // Default to 'main'
+    $github_Branch = get_option('github_Branch', 'main');
     echo '<input type="text" name="github_Branch" value="' . esc_attr($github_Branch) . '" />';
 }
-
-// Theme or Plugin Selection Callback
 function theme_or_plugin_callback()
 {
     $selected_type = get_option('theme_or_plugin', '');
     $types = ['Plugin', 'Theme'];
-
     echo '<select name="theme_or_plugin">';
     foreach ($types as $type) {
         echo '<option value="' . esc_attr($type) . '" ' . selected($selected_type, $type, false) . '>' . esc_html($type) . '</option>';
@@ -161,20 +158,17 @@ function theme_or_plugin_callback()
     echo '</select>';
 }
 
-//--------------------------- AJDWP Plugins Section ---------------------------//
-
-// Register settings for AJDWP Plugin Selection
+/* -------------------------------------------------------------
+   3) REGISTER / RENDER AJDWP PLUGIN SELECTION SETTINGS
+------------------------------------------------------------- */
 add_action('admin_init', 'AJDWP_plugin_settings');
-
 function AJDWP_plugin_settings()
 {
-    // Register setting with a sanitization callback
     register_setting('AJDWP_plugin_settings', 'AJDWP_select_plugins', [
         'sanitize_callback' => 'AJDWP_sanitize_plugins_selection',
         'default' => [],
     ]);
 
-    // Add settings section
     add_settings_section(
         'AJDWP_plugins_section',
         'AJDWP Theme and Plugins',
@@ -182,7 +176,6 @@ function AJDWP_plugin_settings()
         'AJDWP-plugin-settings'
     );
 
-    // Add settings field
     add_settings_field(
         'AJDWP_select_plugins',
         'Select needed options to be installed at once:',
@@ -191,14 +184,10 @@ function AJDWP_plugin_settings()
         'AJDWP_plugins_section'
     );
 }
-
-// Section callback for description
 function AJDWP_plugins_section_callback()
 {
     echo esc_html('Select the theme and the plugins that you would like to be installed:');
 }
-
-// Callback to display available plugin options
 function AJDWP_select_plugins_callback()
 {
     $selected_plugins = get_option('AJDWP_select_plugins', []);
@@ -212,27 +201,20 @@ function AJDWP_select_plugins_callback()
         'AJDWP-user-social-media',
         'AJDWP-SEO-Checklist',
     ];
-
-    if (!is_array($selected_plugins)) {
+    if (! is_array($selected_plugins)) {
         $selected_plugins = [];
     }
-
-    // Render checkboxes for each plugin
     foreach ($all_plugins as $plugin) {
         echo '<label><input type="checkbox" name="AJDWP_select_plugins[]" value="' . esc_attr($plugin) . '" ' .
             checked(in_array($plugin, $selected_plugins, true), true, false) . '> ' .
             esc_html($plugin) . '</label><br>';
     }
 }
-
-// Sanitization callback for selected plugins
 function AJDWP_sanitize_plugins_selection($input)
 {
-    if (!is_array($input)) {
+    if (! is_array($input)) {
         return [];
     }
-
-    // Whitelist validation: Ensure only allowed plugin names are saved
     $allowed_plugins = [
         'Hello-Elementor-Child-theme',
         'AJDWP-floating-login-form',
@@ -243,36 +225,42 @@ function AJDWP_sanitize_plugins_selection($input)
         'AJDWP-user-social-media',
         'AJDWP-SEO-Checklist',
     ];
-
     return array_filter($input, function ($plugin) use ($allowed_plugins) {
         return in_array($plugin, $allowed_plugins, true);
     });
 }
 
-//--------------------------- Global Variables - GitHub inserted details ---------------------------//
+/* -------------------------------------------------------------
+   4) LOAD UPDATERS IF user selected "Theme" or "Plugin"
+------------------------------------------------------------- */
 $AJDWP_github_user   = sanitize_text_field(get_option('github_username', 'default_user'));
 $AJDWP_github_repo   = sanitize_text_field(get_option('github_repository', 'default_repo'));
 $AJDWP_github_branch = sanitize_text_field(get_option('github_Branch', 'main'));
 
-//--------------------------- Keep the inserted details of GitHub Update ---------------------------//
 if (get_option('theme_or_plugin') === 'Theme') {
     include_once('includes/theme_updater.php');
 }
-
 if (get_option('theme_or_plugin') === 'Plugin') {
     include_once('includes/plugin_updater.php');
 }
 
-//--------------------------- Install theme or plugin with inserted details of GitHub ---------------------------//
-// Nonce verification and capability check for GitHub inserted details
+/* -------------------------------------------------------------
+   5) HOOK 1: Process the FIRST FORM - GITHUB INSTALL/UPDATE
+------------------------------------------------------------- */
 add_action('admin_init', 'github_plugin_nonce_check');
 function github_plugin_nonce_check()
 {
+    // Only proceed if the first form was submitted
+    if (! isset($_POST['install_github_plugins'])) {
+        return; // user did not submit the GitHub form
+    }
+
+    // Now check the nonce from the GitHub form
     if (
-        isset($_POST['github_plugin_nonce']) &&
-        wp_verify_nonce($_POST['github_plugin_nonce'], 'github_plugin_nonce_action')
+        isset($_POST['github_plugin_nonce'])
+        && wp_verify_nonce($_POST['github_plugin_nonce'], 'github_plugin_nonce_action')
     ) {
-        // Ensure the current user has sufficient permissions
+        // Ensure current user can manage_options
         if (current_user_can('manage_options')) {
             global $AJDWP_github_user, $AJDWP_github_repo, $AJDWP_github_branch;
 
@@ -285,38 +273,37 @@ function github_plugin_nonce_check()
                 install_github_plugin($AJDWP_github_user, $AJDWP_github_repo, $AJDWP_github_branch);
             }
         }
+        // else, user lacks perms -> do nothing or error_log if you want
     }
+    // else, nonce was invalid -> do nothing or error_log if you want
 }
 
-
-//--------------------------- Install selected AJDWP theme or plugins ---------------------------//
-// Nonce verification and capability check for AJDWP theme and Plugins
+/* -------------------------------------------------------------
+   6) HOOK 2: Process the SECOND FORM - "AJDWP Theme/Plugins" selection
+------------------------------------------------------------- */
 add_action('admin_init', 'AJDWP_plugin_nonce_check');
-
 function AJDWP_plugin_nonce_check()
 {
-    if (! isset($_POST['install_github_plugins'])) {
-        // The user is just loading an admin page, not submitting your form.
-        return;
+    // Only proceed if user clicked the second form's button
+    if (! isset($_POST['install_selected_plugins'])) {
+        return; // user didn't submit the second form
     }
 
+    // Check the nonce from the second form
     if (
-        isset($_POST['AJDWP_plugin_nonce']) &&
-        wp_verify_nonce($_POST['AJDWP_plugin_nonce'], 'AJDWP_plugin_nonce_action')
+        isset($_POST['AJDWP_plugin_nonce'])
+        && wp_verify_nonce($_POST['AJDWP_plugin_nonce'], 'AJDWP_plugin_nonce_action')
     ) {
         if (current_user_can('manage_options')) {
             $selected_options = get_option('AJDWP_select_plugins', []);
-
-            if (is_array($selected_options) && !empty($selected_options)) {
+            if (is_array($selected_options) && ! empty($selected_options)) {
                 $theme_exists = wp_get_theme('Hello-Elementor-Child-Theme');
-
                 foreach ($selected_options as $option) {
                     $plugin_path = WP_PLUGIN_DIR . '/' . sanitize_title($option) . '-Plugin/' . sanitize_title($option) . '.php';
-
-                    if ($option === 'Hello-Elementor-Child-theme' && !$theme_exists->exists()) {
+                    if ($option === 'Hello-Elementor-Child-theme' && ! $theme_exists->exists()) {
                         include_once('includes/theme_installer.php');
                         install_github_theme('theme', 'arash12javadi', 'Hello-Elementor-Child', 'Theme');
-                    } elseif (!file_exists($plugin_path)) {
+                    } elseif (! file_exists($plugin_path)) {
                         include_once('includes/plugin_installer.php');
                         install_github_plugin('arash12javadi', sanitize_title($option), 'Plugin');
                     } else {
@@ -330,19 +317,19 @@ function AJDWP_plugin_nonce_check()
             error_log('Current user does not have sufficient permissions to install themes/plugins.');
         }
     } else {
+        // The AJDWP plugin nonce was invalid
         error_log('Nonce verification failed for AJDWP plugin/theme installation.');
     }
 }
 
-//--------------------------- Keep Update the selected AJDWP theme or plugins ---------------------------//
+/* -------------------------------------------------------------
+   7) Keep Update the selected AJDWP theme or plugins
+------------------------------------------------------------- */
 $selected_options = get_option('AJDWP_select_plugins');
-
 if (is_array($selected_options)) {
     foreach ($selected_options as $option) {
-        // Check if the option is for the Hello-Elementor-Child theme
         if ($option === 'Hello-Elementor-Child-theme') {
             include_once plugin_dir_path(__FILE__) . 'includes/theme_updater.php';
-
             add_filter('pre_set_site_transient_update_themes', function ($data) {
                 $AJDWP_github_user   = 'arash12javadi';
                 $AJDWP_github_repo   = 'Hello-Elementor-Child';
@@ -354,17 +341,13 @@ if (is_array($selected_options)) {
                     'https://api.github.com/repos/' . esc_attr($AJDWP_github_user) . '/' . esc_attr($AJDWP_github_repo) . '/releases/latest',
                     ['timeout' => 30, 'headers' => ['User-Agent' => esc_attr($AJDWP_github_user)]]
                 );
-
                 if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
                     error_log('Failed to fetch theme update data from GitHub.');
                     return $data;
                 }
-
                 $file = json_decode(wp_remote_retrieve_body($response));
-
-                if (!empty($file->tag_name)) {
+                if (! empty($file->tag_name)) {
                     $update = filter_var($file->tag_name, FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
-
                     if (version_compare($update, $current, '>')) {
                         $data->response[$theme] = [
                             'theme'       => $theme,
@@ -374,23 +357,20 @@ if (is_array($selected_options)) {
                         ];
                     }
                 }
-
                 return $data;
             });
         } else {
             // Handle plugins
             include_once plugin_dir_path(__FILE__) . 'includes/plugin_updater.php';
-
             add_filter('pre_set_site_transient_update_plugins', function ($data) use ($option) {
                 $github_user = 'arash12javadi';
                 $plugin_slug = sanitize_title($option);
                 $plugin_file = WP_PLUGIN_DIR . '/' . $plugin_slug . '-Plugin/' . $plugin_slug . '.php';
 
-                if (!file_exists($plugin_file)) {
+                if (! file_exists($plugin_file)) {
                     error_log("Plugin file not found: {$plugin_file}");
                     return $data;
                 }
-
                 $plugin_data = get_plugin_data($plugin_file, false, false);
                 $current_version = preg_replace('/[^0-9]/', '', $plugin_data['Version']);
 
@@ -398,17 +378,13 @@ if (is_array($selected_options)) {
                     'https://api.github.com/repos/' . $github_user . '/' . $plugin_slug . '/releases/latest',
                     ['timeout' => 30, 'headers' => ['User-Agent' => $github_user]]
                 );
-
                 if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
                     error_log('Failed to fetch plugin update data from GitHub.');
                     return $data;
                 }
-
                 $file = json_decode(wp_remote_retrieve_body($response));
-
-                if (!empty($file->tag_name)) {
+                if (! empty($file->tag_name)) {
                     $update_version = preg_replace('/[^0-9]/', '', $file->tag_name);
-
                     if (version_compare($current_version, $update_version, '<')) {
                         $data->response[$plugin_slug . '-Plugin/' . $plugin_slug . '.php'] = [
                             'slug'        => $plugin_slug,
@@ -418,7 +394,6 @@ if (is_array($selected_options)) {
                         ];
                     }
                 }
-
                 return $data;
             });
         }
