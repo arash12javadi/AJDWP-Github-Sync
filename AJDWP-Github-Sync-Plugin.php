@@ -1,12 +1,12 @@
 <?php
 
-if ( ! defined( 'ABSPATH' ) ) exit; 
+if (! defined('ABSPATH')) exit;
 
 /**
  * Plugin Name:       AJDWP GitHub Sync Plugin
  * Plugin URI:        https://github.com/arash12javadi/
  * Description:       Easily install and keep GitHub-hosted themes and plugins up-to-date by specifying the GitHub username, repository, and branch. Also, install and update all AJDWP plugins and themes with a single click.
- * Version:           1.0
+ * Version:           250302
  * Requires at least: 5.2
  * Requires PHP:      7.2
  * Author:            Arash Javadi
@@ -24,7 +24,8 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 // Add a menu item to the admin menu
 add_action('admin_menu', 'github_plugin_menu');
 
-function github_plugin_menu() {
+function github_plugin_menu()
+{
     add_menu_page(
         'GitHub Plugin Settings',
         'AJDWP GitHub Sync',
@@ -36,10 +37,11 @@ function github_plugin_menu() {
 }
 
 // Callback function for the settings page
-function github_plugin_page() {
-    ?>
+function github_plugin_page()
+{
+?>
     <div class="wrap">
-        
+
         <!-- Form for GitHub Settings -->
         <form method="post" action="options.php">
             <?php
@@ -49,7 +51,7 @@ function github_plugin_page() {
             submit_button('Install / Update');
             ?>
         </form>
-        
+
         <!-- Form for AJDWP Plugin Settings -->
         <form method="post" action="options.php">
             <?php
@@ -60,13 +62,14 @@ function github_plugin_page() {
             ?>
         </form>
     </div>
-    <?php
+<?php
 }
 
 // Register settings
 add_action('admin_init', 'github_plugin_settings');
 
-function github_plugin_settings() {
+function github_plugin_settings()
+{
     // Register and sanitize inputs
     register_setting('github_plugin_settings', 'github_username', 'sanitize_text_field');
     register_setting('github_plugin_settings', 'github_repository', 'sanitize_text_field');
@@ -119,30 +122,35 @@ function github_plugin_settings() {
 }
 
 // GitHub Section Callback
-function github_plugin_section_callback() {
+function github_plugin_section_callback()
+{
     echo esc_html('Enter your GitHub details for the themes or plugins you would like to install or update below:');
 }
 
 // GitHub Username Callback
-function github_username_callback() {
+function github_username_callback()
+{
     $github_username = get_option('github_username', '');
     echo '<input type="text" name="github_username" value="' . esc_attr($github_username) . '" />';
 }
 
 // GitHub Repository Callback
-function github_repository_callback() {
+function github_repository_callback()
+{
     $github_repository = get_option('github_repository', '');
     echo '<input type="text" name="github_repository" value="' . esc_attr($github_repository) . '" />';
 }
 
 // GitHub Branch Callback
-function github_Branch_callback() {
+function github_Branch_callback()
+{
     $github_Branch = get_option('github_Branch', 'main'); // Default to 'main'
     echo '<input type="text" name="github_Branch" value="' . esc_attr($github_Branch) . '" />';
 }
 
 // Theme or Plugin Selection Callback
-function theme_or_plugin_callback() {
+function theme_or_plugin_callback()
+{
     $selected_type = get_option('theme_or_plugin', '');
     $types = ['Plugin', 'Theme'];
 
@@ -158,7 +166,8 @@ function theme_or_plugin_callback() {
 // Register settings for AJDWP Plugin Selection
 add_action('admin_init', 'AJDWP_plugin_settings');
 
-function AJDWP_plugin_settings() {
+function AJDWP_plugin_settings()
+{
     // Register setting with a sanitization callback
     register_setting('AJDWP_plugin_settings', 'AJDWP_select_plugins', [
         'sanitize_callback' => 'AJDWP_sanitize_plugins_selection',
@@ -184,12 +193,14 @@ function AJDWP_plugin_settings() {
 }
 
 // Section callback for description
-function AJDWP_plugins_section_callback() {
+function AJDWP_plugins_section_callback()
+{
     echo esc_html('Select the theme and the plugins that you would like to be installed:');
 }
 
 // Callback to display available plugin options
-function AJDWP_select_plugins_callback() {
+function AJDWP_select_plugins_callback()
+{
     $selected_plugins = get_option('AJDWP_select_plugins', []);
     $all_plugins = [
         'Hello-Elementor-Child-theme',
@@ -209,13 +220,14 @@ function AJDWP_select_plugins_callback() {
     // Render checkboxes for each plugin
     foreach ($all_plugins as $plugin) {
         echo '<label><input type="checkbox" name="AJDWP_select_plugins[]" value="' . esc_attr($plugin) . '" ' .
-             checked(in_array($plugin, $selected_plugins, true), true, false) . '> ' .
-             esc_html($plugin) . '</label><br>';
+            checked(in_array($plugin, $selected_plugins, true), true, false) . '> ' .
+            esc_html($plugin) . '</label><br>';
     }
 }
 
 // Sanitization callback for selected plugins
-function AJDWP_sanitize_plugins_selection($input) {
+function AJDWP_sanitize_plugins_selection($input)
+{
     if (!is_array($input)) {
         return [];
     }
@@ -254,7 +266,8 @@ if (get_option('theme_or_plugin') === 'Plugin') {
 //--------------------------- Install theme or plugin with inserted details of GitHub ---------------------------//
 // Nonce verification and capability check for GitHub inserted details
 add_action('admin_init', 'github_plugin_nonce_check');
-function github_plugin_nonce_check() {
+function github_plugin_nonce_check()
+{
     if (
         isset($_POST['github_plugin_nonce']) &&
         wp_verify_nonce($_POST['github_plugin_nonce'], 'github_plugin_nonce_action')
@@ -280,7 +293,13 @@ function github_plugin_nonce_check() {
 // Nonce verification and capability check for AJDWP theme and Plugins
 add_action('admin_init', 'AJDWP_plugin_nonce_check');
 
-function AJDWP_plugin_nonce_check() {
+function AJDWP_plugin_nonce_check()
+{
+    if (! isset($_POST['install_github_plugins'])) {
+        // The user is just loading an admin page, not submitting your form.
+        return;
+    }
+
     if (
         isset($_POST['AJDWP_plugin_nonce']) &&
         wp_verify_nonce($_POST['AJDWP_plugin_nonce'], 'AJDWP_plugin_nonce_action')
